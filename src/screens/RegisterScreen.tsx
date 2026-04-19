@@ -1,23 +1,45 @@
+import { useMutation } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
+import { useNavigate } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
+import { getErrorMessage } from "../lib/api-errors";
+import { register as registerRequest } from "../services/auth.service";
 
 const RegisterScreen = () => {
+  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
+
+  const registerMutation = useMutation({ mutationFn: registerRequest });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    setFormError(undefined);
     if (password !== confirmPassword) {
       setConfirmError("Passwords do not match.");
       return;
     }
     setConfirmError(undefined);
+    registerMutation.mutate(
+      {
+        name: displayName.trim(),
+        email: email.trim(),
+        password,
+      },
+      {
+        onSuccess: () => {
+          navigate("/verify-email", { state: { email: email.trim() } });
+        },
+        onError: (err) => setFormError(getErrorMessage(err)),
+      },
+    );
   };
 
   return (
@@ -81,7 +103,14 @@ const RegisterScreen = () => {
             setConfirmError(undefined);
           }}
         />
-        <Button type="submit">Create account</Button>
+        {formError ? (
+          <p className="rounded-xl border border-error/40 bg-error/5 px-4 py-3 text-sm text-error" role="alert">
+            {formError}
+          </p>
+        ) : null}
+        <Button type="submit" disabled={registerMutation.isPending}>
+          {registerMutation.isPending ? "Creating account…" : "Create account"}
+        </Button>
       </form>
     </AuthShell>
   );

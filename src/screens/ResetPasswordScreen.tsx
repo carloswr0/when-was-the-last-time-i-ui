@@ -1,32 +1,45 @@
+import { useMutation } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
+import { getErrorMessage } from "../lib/api-errors";
+import { resetPassword as resetPasswordRequest } from "../services/auth.service";
 
 const ResetPasswordScreen = () => {
   const [searchParams] = useSearchParams();
   const [tokenInput, setTokenInput] = useState(
-    () => searchParams.get("token") ?? "",
+    () => searchParams.get("reset_password_token") ?? "",
   );
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState<string | undefined>();
+  const [formError, setFormError] = useState<string | undefined>();
   const [success, setSuccess] = useState(false);
 
   const token = tokenInput.trim();
 
+  const resetMutation = useMutation({ mutationFn: resetPasswordRequest });
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    setFormError(undefined);
     if (!token) return;
     if (password !== confirmPassword) {
       setConfirmError("Passwords do not match.");
       return;
     }
     setConfirmError(undefined);
-    setSuccess(true);
+    resetMutation.mutate(
+      { password, token },
+      {
+        onSuccess: () => setSuccess(true),
+        onError: (err) => setFormError(getErrorMessage(err)),
+      },
+    );
   };
 
   return (
@@ -55,16 +68,7 @@ const ResetPasswordScreen = () => {
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
-          <TextField
-            id="reset-token"
-            name="token"
-            type="text"
-            autoComplete="off"
-            label="Reset token"
-            hint="From your email, or add ?token=… to this page’s URL."
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-          />
+
           <TextField
             id="reset-new-password"
             name="password"
@@ -93,8 +97,13 @@ const ResetPasswordScreen = () => {
               setConfirmError(undefined);
             }}
           />
-          <Button type="submit" disabled={!token}>
-            Update password
+          {formError ? (
+            <p className="rounded-xl border border-error/40 bg-error/5 px-4 py-3 text-sm text-error" role="alert">
+              {formError}
+            </p>
+          ) : null}
+          <Button type="submit" disabled={!token || resetMutation.isPending}>
+            {resetMutation.isPending ? "Updating…" : "Update password"}
           </Button>
         </form>
       )}

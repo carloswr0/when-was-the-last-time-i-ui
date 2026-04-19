@@ -1,15 +1,41 @@
-import { type FormEvent, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useContext, type FormEvent, useState } from "react";
+import { useNavigate } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
+import { AuthContext } from "../contexts/Auth/AuthContext";
+import { getErrorMessage } from "../lib/api-errors";
+import { pickAuthToken } from "../lib/auth-token";
+import { login as loginRequest } from "../services/auth.service";
 
 const LoginScreen = () => {
+  const navigate = useNavigate();
+  const { login: setSession } = useContext(AuthContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState<string | undefined>();
+  const loginMutation = useMutation({ mutationFn: loginRequest });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    setFormError(undefined);
+    loginMutation.mutate(
+      { email: email.trim(), password },
+      {
+        onSuccess: (data) => {
+          const token = pickAuthToken(data);
+          if (!token) {
+            setFormError("Could not read session from the server response.");
+            return;
+          }
+          setSession(token);
+          navigate("/home");
+        },
+        onError: (err) => setFormError(getErrorMessage(err)),
+      },
+    );
   };
 
   return (
@@ -46,8 +72,15 @@ const LoginScreen = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {formError ? (
+          <p className="rounded-xl border border-error/40 bg-error/5 px-4 py-3 text-sm text-error" role="alert">
+            {formError}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-4">
-          <Button type="submit">Log in</Button>
+          <Button type="submit" disabled={loginMutation.isPending}>
+            {loginMutation.isPending ? "Logging in…" : "Log in"}
+          </Button>
           <p className="text-center text-sm sm:text-left">
             <AuthLink to="/request-reset-password">Forgot password?</AuthLink>
           </p>
