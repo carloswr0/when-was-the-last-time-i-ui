@@ -1,1 +1,86 @@
 @import "tailwindcss";
+
+/* Manual dark mode: add `class="dark"` on <html> (optionally sync with prefers-color-scheme via JS). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* `static`: always emit these as :root vars (Tailwind v4 otherwise omits unused theme colors). */
+@theme static {
+  /* Brand */
+  --color-primary: #3b82f6;
+  --color-secondary: #6366f1;
+
+  /* Surfaces & text (light defaults) */
+  --color-background: #f9fafb;
+  --color-surface: #ffffff;
+  --color-foreground: #111827;
+  --color-muted-foreground: #6b7280;
+  --color-border: #e5e7eb;
+
+  /* Functional */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #0ea5e9;
+
+  /* Recurring events */
+  --color-recurring-daily: #22c55e;
+  --color-recurring-weekly: #3b82f6;
+  --color-recurring-monthly: #8b5cf6;
+  --color-recurring-custom: #f97316;
+
+  /* Tags & categories */
+  --color-tag-purple: #a855f7;
+  --color-tag-pink: #ec4899;
+  --color-tag-teal: #14b8a6;
+  --color-tag-yellow: #eab308;
+
+  /* Typography — sizes use rem; pair with `--text-*--line-height` (see Theme preview). */
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+}
+
+/* Dark mode semantic tokens (brand / functional / recurring stay unchanged). */
+html.dark {
+  --color-background: #111827;
+  --color-surface: #1f2937;
+  --color-foreground: #f9fafb;
+  --color-muted-foreground: #9ca3af;
+  --color-border: #374151;
+}
+
+@layer base {
+
+  /* Root rem: 1rem === 16px for all `--text-*` and spacing that uses rem. */
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    @apply bg-background font-sans text-base text-foreground antialiased;
+  }
+}
