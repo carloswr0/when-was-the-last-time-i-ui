@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 import { useSearchParams } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
@@ -39,7 +39,7 @@ const VerifyEmailScreen = () => {
     enabled: token.length > 0,
   });
 
-  const handleResend = (e: FormEvent) => {
+  const handleResend = (e: SyntheticEvent) => {
     e.preventDefault();
     setSent(true);
   };

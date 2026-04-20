@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 import { useSearchParams } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
@@ -10,9 +10,7 @@ import { resetPassword as resetPasswordRequest } from "../services/auth.service"
 
 const ResetPasswordScreen = () => {
   const [searchParams] = useSearchParams();
-  const [tokenInput, setTokenInput] = useState(
-    () => searchParams.get("reset_password_token") ?? "",
-  );
+  const tokenInput = searchParams.get("reset_password_token") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,7 +22,7 @@ const ResetPasswordScreen = () => {
 
   const resetMutation = useMutation({ mutationFn: resetPasswordRequest });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: SyntheticEvent) => {
     e.preventDefault();
     setFormError(undefined);
     if (!token) return;

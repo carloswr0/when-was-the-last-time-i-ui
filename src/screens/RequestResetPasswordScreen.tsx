@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type SyntheticEvent, useState } from "react";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
 import { Button } from "../components/ui/Button";
@@ -16,7 +16,7 @@ const RequestResetPasswordScreen = () => {
     mutationFn: requestResetPasswordRequest,
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: SyntheticEvent) => {
     e.preventDefault();
     setFormError(undefined);
     requestMutation.mutate(

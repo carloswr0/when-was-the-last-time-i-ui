@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { AuthContext } from "./AuthContext";
-import { LOCAL_STORAGE_TOKEN } from "../../constants";
+import { LOCAL_STORAGE_TOKEN } from "../../types";
 
 
 function AuthContextProvider({ children }: { children: React.ReactNode }) {

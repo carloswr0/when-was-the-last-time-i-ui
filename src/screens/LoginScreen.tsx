@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useContext, type FormEvent, useState } from "react";
+import { useContext, type SyntheticEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
@@ -18,7 +18,7 @@ const LoginScreen = () => {
   const [formError, setFormError] = useState<string | undefined>();
   const loginMutation = useMutation({ mutationFn: loginRequest });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: SyntheticEvent) => {
     e.preventDefault();
     setFormError(undefined);
     loginMutation.mutate(
