@@ -18,6 +18,19 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/** True if a non-empty token is stored and, for JWTs with `exp`, not past expiry. */
+export function isStoredAuthTokenValid(): boolean {
+  const token = localStorage.getItem(LOCAL_STORAGE_TOKEN);
+  if (!token?.trim()) return false;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return true;
+  const exp = payload.exp;
+  if (typeof exp === "number") {
+    return exp * 1000 > Date.now();
+  }
+  return true;
+}
+
 /** Resolves the current user id from a JWT `auth_token`, if the token is JWT-shaped. */
 export function getStoredAuthUserId(): string | null {
   const token = localStorage.getItem(LOCAL_STORAGE_TOKEN);

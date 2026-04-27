@@ -47,6 +47,7 @@ export type Reminders = {
   frequency: number;
   pushNotificationsEnabled: boolean;
   id: string;
+  remindersGroup: string;
 }
 
 export type GroupTypeType = "personal" | "shared";

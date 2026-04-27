@@ -1,108 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { Link } from "react-router";
-import { Card } from "../components/ui/Card";
 import { cn } from "../lib/cn";
-import { getErrorMessage } from "../lib/api-errors";
-import { getStoredAuthUserId } from "../lib/auth-token";
-import { sortRemindersByLastUpdatedAt } from "../lib/sort-reminders-by-updated";
-import {
-  getUserGroups,
-  userGroupsQueryKey,
-} from "../services/groups.service";
-import {
-  getAllUserReminders,
-  userRemindersQueryKey,
-} from "../services/reminders.service";
-import { ReminderType, type GroupType, type Reminders } from "../types";
-
-const rowButtonClass =
-  "group flex w-full items-start gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 text-left shadow-sm transition-[background-color,box-shadow] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-background/40 dark:hover:bg-background/80";
-
-const urgencyStyles = {
-  high: "bg-error/15 text-error ring-1 ring-error/25",
-  medium: "bg-warning/15 text-warning ring-1 ring-warning/25",
-};
-
-function Chevron() {
-  return (
-    <span
-      className="mt-0.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-      aria-hidden
-    >
-      ›
-    </span>
-  );
-}
-
-function groupMeta(group: GroupType): string {
-  if (group.type === "personal") return "Personal";
-  if (group.type === "shared") return "Shared";
-  return "Group";
-}
-
-function groupSnippet(group: GroupType): string {
-  const d = group.description?.trim();
-  if (d) return d.length > 120 ? `${d.slice(0, 117)}…` : d;
-  return "No description yet.";
-}
-
-function groupInitials(name: string): string {
-  const words = name
-    .split(/[\s&/]+/)
-    .map((w) => w.trim())
-    .filter((w) => w.length > 0);
-  const first = words[0]?.match(/[A-Za-z]/)?.[0] ?? "?";
-  const second = words[1]?.match(/[A-Za-z]/)?.[0] ?? first;
-  return `${first}${second}`.toUpperCase();
-}
-
-function reminderMeta(r: Reminders): string {
-  const d = r.description?.trim();
-  const updated = r.lastUpdatedAt
-    ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleString()}`
-    : "Never updated";
-  if (d) return d.length > 80 ? `${d.slice(0, 77)}… · ${updated}` : `${d} · ${updated}`;
-  return updated;
-}
+import IncomingDeadlines from "../components/sections/IncomingDeadlines";
+import YourGroups from "../components/sections/YourGroups";
 
 const HomeScreen = () => {
-  const {
-    data,
-    isPending: groupsLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: userGroupsQueryKey,
-    queryFn: getUserGroups,
-  });
-  const groups = data?.data ?? [];
-  const groupsError = isError ? getErrorMessage(error) : undefined;
-
-  const userId = useMemo(() => {
-    const fromToken = getStoredAuthUserId();
-    if (fromToken) return fromToken;
-    return groups[0]?.user;
-  }, [groups]);
-
-  const {
-    data: remindersResponse,
-    isPending: remindersLoading,
-    isError: remindersIsError,
-    error: remindersError,
-  } = useQuery({
-    queryKey: userRemindersQueryKey(userId ?? ""),
-    queryFn: () => getAllUserReminders(userId!),
-    enabled: Boolean(userId),
-  });
-
-  const userReminders = remindersResponse?.data?.reminders ?? [];
-  const sortedReminders = useMemo(
-    () => sortRemindersByLastUpdatedAt(userReminders),
-    [userReminders],
-  );
-  const remindersErrorMsg = remindersIsError ? getErrorMessage(remindersError) : undefined;
-
   return (
     <div className="relative flex min-h-dvh flex-col bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -123,7 +24,16 @@ const HomeScreen = () => {
         className="relative z-10 border-b border-border/80 bg-background/70 backdrop-blur-sm"
         aria-label="Home actions"
       >
-        <div className="mx-auto flex max-w-3xl items-center justify-end gap-2 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
+          <Link
+            to="/settings"
+            className={cn(
+              "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-[opacity,background-color] sm:w-auto sm:text-base",
+              "hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background",
+            )}
+          >
+            Settings
+          </Link>
           <Link
             to="/group/new"
             className={cn(
@@ -137,100 +47,9 @@ const HomeScreen = () => {
       </nav>
 
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6">
-        <section aria-labelledby="dash-deadlines-heading">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <h2 id="dash-deadlines-heading" className="text-lg font-semibold tracking-tight">
-              Incoming deadlines
-            </h2>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Soonest first
-            </span>
-          </div>
-          <Card padding="none" className="divide-y divide-border/80">
-            {!userId ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                {groupsLoading
-                  && "Loading…"
-                }
-              </div>
-            ) : remindersLoading ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">Loading reminders…</div>
-            ) : remindersErrorMsg ? (
-              <div className="px-4 py-6 text-center text-sm text-error">{remindersErrorMsg}</div>
-            ) : sortedReminders.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No reminders yet.</div>
-            ) : (
-              sortedReminders.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
-                  onClick={() => { }}
-                >
-                  <span
-                    className={cn(
-                      "mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                      item.type === ReminderType.recurring ? urgencyStyles.medium : urgencyStyles.high,
-                    )}
-                  >
-                    {item.type === ReminderType.recurring ? "Recurring" : "One-time"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-foreground">{item.title}</span>
-                    <span className="mt-0.5 block text-sm text-muted-foreground">{reminderMeta(item)}</span>
-                  </span>
-                  <Chevron />
-                </button>
-              ))
-            )}
-          </Card>
-        </section>
+        <IncomingDeadlines />
 
-        <section aria-labelledby="dash-groups-heading">
-          <div className="mb-3 flex items-baseline justify-between gap-3">
-            <h2 id="dash-groups-heading" className="text-lg font-semibold tracking-tight">
-              Your groups
-            </h2>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Shared routines
-            </span>
-          </div>
-          <Card padding="none" className="divide-y divide-border/80">
-            {groupsLoading ? (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground">Loading groups…</div>
-            ) : groupsError ? (
-              <div className="px-4 py-6 text-center text-sm text-error">{groupsError}</div>
-            ) : groups.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                <p className="text-sm text-muted-foreground">You are not in any groups yet.</p>
-                <Link
-                  to="/group/new"
-                  className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  Create a group
-                </Link>
-              </div>
-            ) : (
-              groups.map((group) => (
-                <Link
-                  key={group.id}
-                  to={`/group/${group.remindersGroup.id}`}
-                  className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
-                >
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
-                    {groupInitials(group.remindersGroup.title)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-foreground">{group.remindersGroup.title}</span>
-                    <span className="mt-0.5 block text-sm text-muted-foreground">{groupMeta(group.remindersGroup)}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground/90">{groupSnippet(group.remindersGroup)}</span>
-                  </span>
-                  <Chevron />
-                </Link>
-              ))
-            )}
-          </Card>
-        </section>
+        <YourGroups />
       </main>
     </div>
   );

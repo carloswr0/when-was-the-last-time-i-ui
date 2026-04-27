@@ -11,6 +11,7 @@ import LandingPage from "./screens/LandingPage";
 import NewGroupScreen from "./screens/NewGroupScreen";
 import GroupDetailsScreen from "./screens/GroupDetailsScreen";
 import NewGroupReminderScreen from "./screens/NewGroupReminderScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 
 /** Remount when `?token=` changes so token state stays in sync with the URL. */
 function ResetPasswordRoute() {
@@ -33,6 +34,7 @@ const App = () => {
       {/*Private screens*/}
       <Route element={<AuthRedirect />}>
         <Route path="/home" element={<HomeScreen />} />
+        <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/group/new" element={<NewGroupScreen />} />
         <Route path="/group/:groupId" element={<GroupDetailsScreen />} />
         <Route path="/group/:groupId/reminders/new" element={<NewGroupReminderScreen />} />

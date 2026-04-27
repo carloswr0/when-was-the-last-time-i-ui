@@ -1,13 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { useContext, type SyntheticEvent, useState } from "react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { AuthShell } from "../components/auth/AuthShell";
 import { AuthLink } from "../components/auth/AuthLink";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { AuthContext } from "../contexts/Auth/AuthContext";
 import { getErrorMessage } from "../lib/api-errors";
-import { pickAuthToken } from "../lib/auth-token";
+import { isStoredAuthTokenValid, pickAuthToken } from "../lib/auth-token";
 import { login as loginRequest } from "../services/auth.service";
 
 const LoginScreen = () => {
@@ -17,6 +17,10 @@ const LoginScreen = () => {
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | undefined>();
   const loginMutation = useMutation({ mutationFn: loginRequest });
+
+  if (isStoredAuthTokenValid()) {
+    return <Navigate to="/home" replace />;
+  }
 
   const handleSubmit = (e: SyntheticEvent) => {
     e.preventDefault();
