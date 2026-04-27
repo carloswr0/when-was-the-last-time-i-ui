@@ -1,37 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { Card } from "../components/ui/Card";
 import { cn } from "../lib/cn";
 import { getErrorMessage } from "../lib/api-errors";
+import { getStoredAuthUserId } from "../lib/auth-token";
+import { sortRemindersByLastUpdatedAt } from "../lib/sort-reminders-by-updated";
 import {
   getUserGroups,
   userGroupsQueryKey,
-  type UserGroupListItem,
 } from "../services/groups.service";
+import {
+  getAllUserReminders,
+  userRemindersQueryKey,
+} from "../services/reminders.service";
+import { ReminderType, type GroupType, type Reminders } from "../types";
 
 const rowButtonClass =
   "group flex w-full items-start gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 text-left shadow-sm transition-[background-color,box-shadow] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-background/40 dark:hover:bg-background/80";
-
-const deadlines = [
-  {
-    id: "dl-1",
-    title: "Quarterly tax estimate",
-    meta: "Due Apr 15 · 3 days",
-    urgency: "high",
-  },
-  {
-    id: "dl-2",
-    title: "Renew driver's license",
-    meta: "Expires in 12 days",
-    urgency: "medium",
-  },
-  {
-    id: "dl-3",
-    title: "Submit benefits enrollment",
-    meta: "Due tomorrow · 5:00 PM",
-    urgency: "high",
-  },
-];
 
 const urgencyStyles = {
   high: "bg-error/15 text-error ring-1 ring-error/25",
@@ -49,13 +35,13 @@ function Chevron() {
   );
 }
 
-function groupMeta(group: UserGroupListItem): string {
+function groupMeta(group: GroupType): string {
   if (group.type === "personal") return "Personal";
   if (group.type === "shared") return "Shared";
   return "Group";
 }
 
-function groupSnippet(group: UserGroupListItem): string {
+function groupSnippet(group: GroupType): string {
   const d = group.description?.trim();
   if (d) return d.length > 120 ? `${d.slice(0, 117)}…` : d;
   return "No description yet.";
@@ -71,6 +57,15 @@ function groupInitials(name: string): string {
   return `${first}${second}`.toUpperCase();
 }
 
+function reminderMeta(r: Reminders): string {
+  const d = r.description?.trim();
+  const updated = r.lastUpdatedAt
+    ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleString()}`
+    : "Never updated";
+  if (d) return d.length > 80 ? `${d.slice(0, 77)}… · ${updated}` : `${d} · ${updated}`;
+  return updated;
+}
+
 const HomeScreen = () => {
   const {
     data,
@@ -81,8 +76,32 @@ const HomeScreen = () => {
     queryKey: userGroupsQueryKey,
     queryFn: getUserGroups,
   });
-  const groups = data?.data;
+  const groups = data?.data ?? [];
   const groupsError = isError ? getErrorMessage(error) : undefined;
+
+  const userId = useMemo(() => {
+    const fromToken = getStoredAuthUserId();
+    if (fromToken) return fromToken;
+    return groups[0]?.user;
+  }, [groups]);
+
+  const {
+    data: remindersResponse,
+    isPending: remindersLoading,
+    isError: remindersIsError,
+    error: remindersError,
+  } = useQuery({
+    queryKey: userRemindersQueryKey(userId ?? ""),
+    queryFn: () => getAllUserReminders(userId!),
+    enabled: Boolean(userId),
+  });
+
+  const userReminders = remindersResponse?.data?.reminders ?? [];
+  const sortedReminders = useMemo(
+    () => sortRemindersByLastUpdatedAt(userReminders),
+    [userReminders],
+  );
+  const remindersErrorMsg = remindersIsError ? getErrorMessage(remindersError) : undefined;
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-background text-foreground">
@@ -128,28 +147,42 @@ const HomeScreen = () => {
             </span>
           </div>
           <Card padding="none" className="divide-y divide-border/80">
-            {deadlines.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
-                onClick={() => { }}
-              >
-                <span
-                  className={cn(
-                    "mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                    urgencyStyles[item.urgency],
-                  )}
+            {!userId ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                {groupsLoading
+                  && "Loading…"
+                }
+              </div>
+            ) : remindersLoading ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">Loading reminders…</div>
+            ) : remindersErrorMsg ? (
+              <div className="px-4 py-6 text-center text-sm text-error">{remindersErrorMsg}</div>
+            ) : sortedReminders.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">No reminders yet.</div>
+            ) : (
+              sortedReminders.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
+                  onClick={() => { }}
                 >
-                  {item.urgency === "high" ? "Urgent" : "Due soon"}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-foreground">{item.title}</span>
-                  <span className="mt-0.5 block text-sm text-muted-foreground">{item.meta}</span>
-                </span>
-                <Chevron />
-              </button>
-            ))}
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                      item.type === ReminderType.recurring ? urgencyStyles.medium : urgencyStyles.high,
+                    )}
+                  >
+                    {item.type === ReminderType.recurring ? "Recurring" : "One-time"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-foreground">{item.title}</span>
+                    <span className="mt-0.5 block text-sm text-muted-foreground">{reminderMeta(item)}</span>
+                  </span>
+                  <Chevron />
+                </button>
+              ))
+            )}
           </Card>
         </section>
 
@@ -179,14 +212,13 @@ const HomeScreen = () => {
               </div>
             ) : (
               groups.map((group) => (
-                <button
+                <Link
                   key={group.id}
-                  type="button"
+                  to={`/group/${group.remindersGroup.id}`}
                   className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
-                  onClick={() => { }}
                 >
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
-                    {groupInitials("AA")}
+                    {groupInitials(group.remindersGroup.title)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium text-foreground">{group.remindersGroup.title}</span>
@@ -194,7 +226,7 @@ const HomeScreen = () => {
                     <span className="mt-1 block text-xs text-muted-foreground/90">{groupSnippet(group.remindersGroup)}</span>
                   </span>
                   <Chevron />
-                </button>
+                </Link>
               ))
             )}
           </Card>

@@ -34,7 +34,7 @@ const exampleItems = [
     last: "Last swap: late February",
     accent: "bg-recurring-custom/15 text-recurring-custom ring-recurring-custom/30",
   },
-] as const;
+];
 
 const featureBlocks = [
   {
@@ -53,7 +53,7 @@ const featureBlocks = [
     title: "Rooms, rides, routines",
     body: "Group events by home, car, health, or pets so the right context is always one tap away.",
   },
-] as const;
+];
 
 const LandingPage = () => {
   return (

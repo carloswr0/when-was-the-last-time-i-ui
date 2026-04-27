@@ -9,6 +9,8 @@ import ThemePreview from "./screens/ThemePreview";
 import HomeScreen from "./screens/HomeScreen";
 import LandingPage from "./screens/LandingPage";
 import NewGroupScreen from "./screens/NewGroupScreen";
+import GroupDetailsScreen from "./screens/GroupDetailsScreen";
+import NewGroupReminderScreen from "./screens/NewGroupReminderScreen";
 
 /** Remount when `?token=` changes so token state stays in sync with the URL. */
 function ResetPasswordRoute() {
@@ -32,7 +34,8 @@ const App = () => {
       <Route element={<AuthRedirect />}>
         <Route path="/home" element={<HomeScreen />} />
         <Route path="/group/new" element={<NewGroupScreen />} />
-        <Route path="/group/:groupId" element={<></>} />
+        <Route path="/group/:groupId" element={<GroupDetailsScreen />} />
+        <Route path="/group/:groupId/reminders/new" element={<NewGroupReminderScreen />} />
       </Route>
     </Routes>
   );

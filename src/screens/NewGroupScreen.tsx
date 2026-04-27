@@ -7,11 +7,10 @@ import { TextArea } from "../components/ui/TextArea";
 import { TextField } from "../components/ui/TextField";
 import { cn } from "../lib/cn";
 import { getErrorMessage } from "../lib/api-errors";
-import { createGroup, userGroupsQueryKey, type GroupType } from "../services/groups.service";
+import { createGroup, userGroupsQueryKey } from "../services/groups.service";
+import type { GroupTypeType } from "../types";
 
-export type { GroupType };
-
-const typeOptions: { value: GroupType; label: string; description: string }[] = [
+const typeOptions: { value: GroupTypeType; label: string; description: string }[] = [
   {
     value: "personal",
     label: "Personal",
@@ -29,7 +28,7 @@ const NewGroupScreen = () => {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<GroupType>("personal");
+  const [type, setType] = useState<GroupTypeType>("personal");
   const [formError, setFormError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
 

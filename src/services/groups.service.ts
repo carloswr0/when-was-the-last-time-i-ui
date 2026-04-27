@@ -1,30 +1,18 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
 import { get, post } from "../lib/request";
 import type { StandardApiResponse } from "../models";
+import type { CreateGroupBody, GroupType, UserReminderGroupType } from "../types";
 
 const groupsApiRoute = `${ENVIRONTMENT.URL_BACKEND}/api/groups`;
-
-export type GroupType = "personal" | "shared";
-
-export type CreateGroupBody = {
-  title: string;
-  description?: string;
-  type: GroupType;
-};
 
 /** POST /api/groups/create */
 export function createGroup(body: CreateGroupBody) {
   return post(groupsApiRoute, "/", body, undefined, true);
 }
 
-export type UserGroupListItem = {
-  id: string;
-  title: string;
-  description?: string | null;
-  type: GroupType;
-};
-
 export const userGroupsQueryKey = ["user-groups"];
+
+export const groupDetailQueryKey = (groupId: string) => ["group", groupId];
 
 /** GET /groups/get-user-groups */
 export async function getUserGroups(): Promise<
@@ -34,7 +22,7 @@ export async function getUserGroups(): Promise<
     role: string,
     updatedAt: string,
     user: string,
-    remindersGroup: UserGroupListItem
+    remindersGroup: GroupType
   }[]>
 > {
   const data = await get(groupsApiRoute, "/get-user-groups", undefined, true);
@@ -42,6 +30,14 @@ export async function getUserGroups(): Promise<
 }
 
 /** GET /api/groups/:group_id */
-export function getGroup(groupId: string) {
-  return get(groupsApiRoute, `/${encodeURIComponent(groupId)}`, undefined, true);
+export async function getGroup(
+  groupId: string,
+): Promise<StandardApiResponse<{ groupDetails: GroupType, groupMembers: UserReminderGroupType[] }>> {
+  const data = await get(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}`,
+    undefined,
+    true,
+  );
+  return data;
 }
