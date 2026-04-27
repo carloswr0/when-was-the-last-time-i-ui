@@ -1,34 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { getErrorMessage } from "../../lib/api-errors";
-import { cn } from "../../lib/cn";
 import { sortRemindersByLastUpdatedAt } from "../../lib/sort-reminders-by-updated";
 import {
   completeGroupReminder,
   getAllUserReminders,
   userRemindersQueryKey,
 } from "../../services/reminders.service";
-import { ReminderType, type Reminders } from "../../types";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { getStoredAuthUserId } from "../../lib/auth-token";
-
-function reminderMeta(r: Reminders): string {
-  const d = r.description?.trim();
-  const updated = r.lastUpdatedAt
-    ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleString()}`
-    : "Never updated";
-  if (d) return d.length > 80 ? `${d.slice(0, 77)}… · ${updated}` : `${d} · ${updated}`;
-  return updated;
-}
-
-const urgencyStyles = {
-  high: "bg-error/15 text-error ring-1 ring-error/25",
-  medium: "bg-warning/15 text-warning ring-1 ring-warning/25",
-};
-
-const rowClass =
-  "flex w-full flex-col gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 text-left shadow-sm dark:bg-background/40";
+import { ReminderItem } from "../ui/ReminderItem";
 
 const IncomingDeadlines = () => {
   const queryClient = useQueryClient();
@@ -36,6 +18,7 @@ const IncomingDeadlines = () => {
     null,
   );
   const [alternateLocal, setAlternateLocal] = useState("");
+  const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
 
   const userId = useMemo(() => {
     const fromToken = getStoredAuthUserId();
@@ -99,7 +82,7 @@ const IncomingDeadlines = () => {
           Soonest first
         </span>
       </div>
-      <Card padding="none" className="divide-y divide-border/80 gap-2 flex flex-col p-2">
+      <Card padding="none" className="divide-y divide-border/80 gap-4 flex flex-col sm:p-8 p-4">
         {!userId ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">Sign in to see your deadlines.</div>
         ) : remindersLoading ? (
@@ -117,64 +100,49 @@ const IncomingDeadlines = () => {
               const groupId = item.remindersGroup;
               const isAlternateOpen =
                 alternateFor?.groupId === groupId && alternateFor?.reminderId === item.id;
+              const showActionButtons = expandedReminderId === item.id || isAlternateOpen;
+              const rowExpanded = expandedReminderId === item.id || isAlternateOpen;
               return (
-                <div
+                <ReminderItem
                   key={item.id}
-                  className={cn(rowClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
+                  item={item}
+                  className="rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl"
+                  expanded={rowExpanded}
+                  headerDisabled={isAlternateOpen}
+                  onHeaderClick={() =>
+                    setExpandedReminderId((cur) => (cur === item.id ? null : item.id))
+                  }
                 >
-                  <div className="flex w-full items-start gap-3">
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={cn(
-                          "block font-medium",
-                          item.type === ReminderType.one_time && item.lastUpdatedAt != null
-                            ? "text-muted-foreground line-through"
-                            : "text-foreground",
-                        )}
+                  {showActionButtons ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        className="w-auto min-w-0"
+                        disabled={completeMutation.isPending}
+                        onClick={() => {
+                          if (!groupId) return;
+                          completeMutation.mutate({ groupId, reminderId: item.id });
+                        }}
                       >
-                        {item.title}
-                      </span>
-                      <span className="mt-0.5 block text-sm text-muted-foreground">
-                        {reminderMeta(item)}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                        item.type === ReminderType.recurring ? urgencyStyles.medium : urgencyStyles.high,
-                      )}
-                    >
-                      {item.type === ReminderType.recurring ? "Recurring" : "One-time"}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="primary"
-                      className="w-auto min-w-0"
-                      disabled={completeMutation.isPending}
-                      onClick={() => {
-                        if (!groupId) return;
-                        completeMutation.mutate({ groupId, reminderId: item.id });
-                      }}
-                    >
-                      Complete!
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-auto min-w-0"
-                      disabled={completeMutation.isPending}
-                      onClick={() => {
-                        if (!groupId) return;
-                        openAlternatePicker(groupId, item.id);
-                      }}
-                    >
-                      Already completed this another time
-                    </Button>
-                  </div>
+                        Complete!
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-auto min-w-0"
+                        disabled={completeMutation.isPending}
+                        onClick={() => {
+                          if (!groupId) return;
+                          openAlternatePicker(groupId, item.id);
+                        }}
+                      >
+                        Already completed this another time
+                      </Button>
+                    </div>
+                  ) : null}
                   {isAlternateOpen ? (
                     <div
                       className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
@@ -218,7 +186,7 @@ const IncomingDeadlines = () => {
                       </div>
                     </div>
                   ) : null}
-                </div>
+                </ReminderItem>
               );
             })}
           </>

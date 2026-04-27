@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { getStoredAuthUserId } from "../lib/auth-token";
 import { getErrorMessage } from "../lib/api-errors";
 import { sortRemindersByLastUpdatedAt } from "../lib/sort-reminders-by-updated";
 import {
@@ -10,9 +11,12 @@ import {
   groupDetailQueryKey,
 } from "../services/groups.service";
 import {
+  completeGroupReminder,
   getAllGroupReminders,
   groupRemindersQueryKey,
+  userRemindersQueryKey,
 } from "../services/reminders.service";
+import { ReminderItem } from "../components/ui/ReminderItem";
 import type { GroupType, UserReminderGroupType } from "../types";
 
 function memberInitials(name: string): string {
@@ -56,8 +60,46 @@ function groupMeta(group: GroupType): string {
 }
 
 const GroupDetailsScreen = () => {
+  const queryClient = useQueryClient();
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const [alternateFor, setAlternateFor] = useState<{ groupId: string; reminderId: string } | null>(
+    null,
+  );
+  const [alternateLocal, setAlternateLocal] = useState("");
+  const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
+
+  const userId = useMemo(() => getStoredAuthUserId(), []);
+
+  const completeMutation = useMutation({
+    mutationFn: (args: { groupId: string; reminderId: string; lastUpdateAt?: string }) =>
+      completeGroupReminder(args.groupId, args.reminderId, args.lastUpdateAt),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: groupRemindersQueryKey(variables.groupId) });
+      if (userId) {
+        await queryClient.invalidateQueries({ queryKey: userRemindersQueryKey(userId) });
+      }
+      setAlternateFor(null);
+      setAlternateLocal("");
+    },
+  });
+
+  function openAlternatePicker(reminderGroupId: string, reminderId: string) {
+    setAlternateFor({ groupId: reminderGroupId, reminderId });
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    setAlternateLocal(d.toISOString().slice(0, 16));
+  }
+
+  function submitAlternate() {
+    if (!alternateFor || !alternateLocal) return;
+    const iso = new Date(alternateLocal).toISOString();
+    completeMutation.mutate({
+      groupId: alternateFor.groupId,
+      reminderId: alternateFor.reminderId,
+      lastUpdateAt: iso,
+    });
+  }
   const {
     data: groupDetailsData,
     isPending: groupDetailsIsPending,
@@ -153,22 +195,30 @@ const GroupDetailsScreen = () => {
                 </Button>
               </div>
               {groupMembers && groupMembers.length > 0 ? (
-                <div
-                  className="mt-4 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                  role="list"
-                  aria-label="Group members"
-                >
-                  {groupMembers.map((m) => (
-                    <div key={m.id} role="listitem">
-                      <MemberChip membership={m} />
-                    </div>
-                  ))}
+                <div>
+
+                  <div
+                    className="mt-4 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="list"
+                    aria-label="Group members"
+                  >
+                    {groupMembers.map((m) => (
+                      <div key={m.id} role="listitem">
+                        <MemberChip membership={m} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-base text-foreground">
+                    {groupDetails?.description?.trim()
+                      ? groupDetails.description.trim()
+                      : "No description yet."}
+                  </p>
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-muted-foreground">No members listed for this group.</p>
               )}
             </Card>
-            <Card className="p-4 sm:p-6">
+            <Card className="p-4">
               <h2 className="text-sm font-medium text-muted-foreground">Reminders</h2>
               {groupRemindersIsPending ? (
                 <p className="mt-3 text-sm text-muted-foreground">Loading reminders…</p>
@@ -177,35 +227,110 @@ const GroupDetailsScreen = () => {
               ) : sortedReminders.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No reminders in this group yet.</p>
               ) : (
-                <ul className="mt-4 flex flex-col gap-3" role="list" aria-label="Group reminders">
-                  {sortedReminders.map((r) => (
-                    <li
-                      key={r.id}
-                      className="rounded-xl border border-border/80 bg-surface/50 px-3 py-3 sm:px-4"
-                    >
-                      <p className="font-medium text-foreground">{r.title}</p>
-                      {r.description?.trim() ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                          {r.description.trim()}
-                        </p>
-                      ) : null}
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {r.lastUpdatedAt
-                          ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleString()}`
-                          : "Never updated"}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-4">
+                  {completeMutation.isError ? (
+                    <p className="text-sm text-error">{getErrorMessage(completeMutation.error)}</p>
+                  ) : null}
+                  <ul className="flex list-none flex-col gap-4 p-0" role="list" aria-label="Group reminders">
+                    {sortedReminders.map((item) => {
+                      const remGroupId = item.remindersGroup;
+                      const isAlternateOpen =
+                        alternateFor?.groupId === remGroupId && alternateFor?.reminderId === item.id;
+                      const showActionButtons = expandedReminderId === item.id || isAlternateOpen;
+                      const rowExpanded = expandedReminderId === item.id || isAlternateOpen;
+                      return (
+                        <li key={item.id}>
+                          <ReminderItem
+                            item={item}
+                            expanded={rowExpanded}
+                            headerDisabled={isAlternateOpen}
+                            onHeaderClick={() =>
+                              setExpandedReminderId((cur) => (cur === item.id ? null : item.id))
+                            }
+                          >
+                            {showActionButtons ? (
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="primary"
+                                  className="w-auto min-w-0"
+                                  disabled={completeMutation.isPending}
+                                  onClick={() => {
+                                    if (!remGroupId) return;
+                                    completeMutation.mutate({ groupId: remGroupId, reminderId: item.id });
+                                  }}
+                                >
+                                  Complete!
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-auto min-w-0"
+                                  disabled={completeMutation.isPending}
+                                  onClick={() => {
+                                    if (!remGroupId) return;
+                                    openAlternatePicker(remGroupId, item.id);
+                                  }}
+                                >
+                                  Already completed this another time
+                                </Button>
+                              </div>
+                            ) : null}
+                            {isAlternateOpen ? (
+                              <div
+                                className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
+                                role="group"
+                                aria-label="When did you complete this?"
+                              >
+                                <label
+                                  htmlFor={`group-alternate-at-${item.id}`}
+                                  className="text-sm font-medium text-foreground"
+                                >
+                                  When did you complete this?
+                                </label>
+                                <input
+                                  id={`group-alternate-at-${item.id}`}
+                                  type="datetime-local"
+                                  value={alternateLocal}
+                                  onChange={(e) => setAlternateLocal(e.target.value)}
+                                  className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="primary"
+                                    className="w-auto"
+                                    disabled={!alternateLocal || completeMutation.isPending}
+                                    onClick={submitAlternate}
+                                  >
+                                    Submit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="w-auto"
+                                    disabled={completeMutation.isPending}
+                                    onClick={() => {
+                                      setAlternateFor(null);
+                                      setAlternateLocal("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </ReminderItem>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
-            </Card>
-            <Card className="p-6">
-              <h2 className="text-sm font-medium text-muted-foreground">Description</h2>
-              <p className="mt-2 text-base text-foreground">
-                {groupDetails?.description?.trim()
-                  ? groupDetails.description.trim()
-                  : "No description yet."}
-              </p>
             </Card>
           </>
         )}

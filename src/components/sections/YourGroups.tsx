@@ -32,6 +32,9 @@ function groupInitials(name: string): string {
 const rowButtonClass =
   "group flex w-full items-start gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 text-left shadow-sm transition-[background-color,box-shadow] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-background/40 dark:hover:bg-background/80";
 
+const rowHoverClass =
+  "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-primary/15 hover:dark:ring-primary/20";
+
 const YourGroups = () => {
   const {
     data,
@@ -71,22 +74,25 @@ const YourGroups = () => {
             </Link>
           </div>
         ) : (
-          groups.map((group) => (
-            <Link
-              key={group.id}
-              to={`/group/${group.remindersGroup.id}`}
-              className={cn(rowButtonClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
-            >
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
-                {groupInitials(group.remindersGroup.title)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium text-foreground">{group.remindersGroup.title}</span>
-                <span className="mt-0.5 block text-sm text-muted-foreground">{groupMeta(group.remindersGroup)}</span>
-                <span className="mt-1 block text-xs text-muted-foreground/90">{groupSnippet(group.remindersGroup)}</span>
-              </span>
-            </Link>
-          ))
+          <div className="gap-4 flex flex-col sm:p-8 p-4">{
+            groups.map((group) => (
+              <Link
+                key={group.id}
+                to={`/group/${group.remindersGroup.id}`}
+                className={cn(rowButtonClass, rowHoverClass, "rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl")}
+              >
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
+                  {groupInitials(group.remindersGroup.title)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-foreground">{group.remindersGroup.title}</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">{groupMeta(group.remindersGroup)}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground/90">{groupSnippet(group.remindersGroup)}</span>
+                </span>
+              </Link>
+            ))
+          }
+          </div>
         )}
       </Card>
     </section>
