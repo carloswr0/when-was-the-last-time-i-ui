@@ -1,7 +1,7 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, post } from "../lib/request";
+import { get, patch, post } from "../lib/request";
 import type { StandardApiResponse } from "../models";
-import type { CreateGroupBody, GroupType, UserReminderGroupType } from "../types";
+import type { CreateGroupBody, GroupType, UpdateGroupBody, UserReminderGroupType } from "../types";
 
 const groupsApiRoute = `${ENVIRONTMENT.URL_BACKEND}/api/groups`;
 
@@ -40,4 +40,15 @@ export async function getGroup(
     true,
   );
   return data;
+}
+
+/** PATCH /api/groups/:group_id */
+export function updateGroup(groupId: string, body: UpdateGroupBody) {
+  return patch(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}`,
+    body,
+    undefined,
+    true,
+  );
 }

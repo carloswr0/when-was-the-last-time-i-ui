@@ -1,52 +1,25 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { type SyntheticEvent, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button } from "../components/ui/Button";
+import { GroupForm, type GroupFormValues } from "../components/sections/GroupForm";
 import { Card } from "../components/ui/Card";
-import { TextArea } from "../components/ui/TextArea";
-import { TextField } from "../components/ui/TextField";
-import { cn } from "../lib/cn";
 import { getErrorMessage } from "../lib/api-errors";
 import { createGroup, userGroupsQueryKey } from "../services/groups.service";
-import type { GroupTypeType } from "../types";
-
-const typeOptions: { value: GroupTypeType; label: string; description: string }[] = [
-  {
-    value: "personal",
-    label: "Personal",
-    description: "Only you see and manage this group.",
-  },
-  {
-    value: "shared",
-    label: "Shared",
-    description: "Invite others to track routines together.",
-  },
-];
 
 const NewGroupScreen = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState<GroupTypeType>("personal");
   const [formError, setFormError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: SyntheticEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: GroupFormValues) => {
     setFormError(undefined);
-    const trimmed = title.trim();
-    if (!trimmed) {
-      setFormError("Enter a title for this group.");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await createGroup({
-        title: trimmed,
-        description: description.trim() || undefined,
-        type,
+        title: values.title,
+        description: values.description || undefined,
+        type: values.type,
       });
       await queryClient.invalidateQueries({ queryKey: userGroupsQueryKey });
       navigate("/home");
@@ -83,85 +56,16 @@ const NewGroupScreen = () => {
 
       <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col px-4 py-8 sm:px-6">
         <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6 sm:gap-7">
-            <TextField
-              id="new-group-title"
-              name="title"
-              type="text"
-              autoComplete="off"
-              label="Title"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              hint="Shown in your list and when you invite people."
-            />
-            <TextArea
-              id="new-group-description"
-              name="description"
-              label="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              hint="Optional. What this group is for."
-              rows={4}
-            />
-
-            <fieldset className="min-w-0">
-              <legend id="new-group-type-heading" className="mb-2 text-sm font-medium text-foreground">
-                Type
-              </legend>
-              <p id="new-group-type-hint" className="mb-3 text-xs text-muted-foreground">
-                Personal groups are private. Shared groups are for collaboration.
-              </p>
-              <div
-                className="flex flex-col gap-3 sm:flex-row"
-                role="radiogroup"
-                aria-labelledby="new-group-type-heading"
-                aria-describedby="new-group-type-hint"
-              >
-                {typeOptions.map((opt) => {
-                  const selected = type === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => setType(opt.value)}
-                      className={cn(
-                        "flex flex-1 flex-col rounded-xl border px-4 py-3 text-left shadow-sm transition-[background-color,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                        selected
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                          : "border-border bg-background/60 hover:bg-background dark:bg-background/40 dark:hover:bg-background/80",
-                      )}
-                    >
-                      <span className="font-medium text-foreground">{opt.label}</span>
-                      <span className="mt-0.5 text-xs text-muted-foreground">{opt.description}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            {formError ? (
-              <p className="rounded-xl border border-error/40 bg-error/5 px-4 py-3 text-sm text-error" role="alert">
-                {formError}
-              </p>
-            ) : null}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="sm:w-auto"
-                onClick={() => navigate("/home")}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" className="sm:min-w-[10rem] sm:w-auto" disabled={isSubmitting}>
-                {isSubmitting ? "Creating…" : "Create group"}
-              </Button>
-            </div>
-          </form>
+          <GroupForm
+            idPrefix="new-group"
+            initialValues={{ title: "", description: "", type: "personal" }}
+            formError={formError}
+            isSubmitting={isSubmitting}
+            onCancel={() => navigate("/home")}
+            onSubmit={handleSubmit}
+            submitLabel="Create group"
+            submittingLabel="Creating…"
+          />
         </Card>
       </main>
     </div>

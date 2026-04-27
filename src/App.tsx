@@ -9,6 +9,7 @@ import ThemePreview from "./screens/ThemePreview";
 import HomeScreen from "./screens/HomeScreen";
 import LandingPage from "./screens/LandingPage";
 import NewGroupScreen from "./screens/NewGroupScreen";
+import EditGroupScreen from "./screens/EditGroupScreen";
 import GroupDetailsScreen from "./screens/GroupDetailsScreen";
 import NewGroupReminderScreen from "./screens/NewGroupReminderScreen";
 import SettingsScreen from "./screens/SettingsScreen";
@@ -36,6 +37,7 @@ const App = () => {
         <Route path="/home" element={<HomeScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/group/new" element={<NewGroupScreen />} />
+        <Route path="/group/:groupId/edit" element={<EditGroupScreen />} />
         <Route path="/group/:groupId" element={<GroupDetailsScreen />} />
         <Route path="/group/:groupId/reminders/new" element={<NewGroupReminderScreen />} />
       </Route>

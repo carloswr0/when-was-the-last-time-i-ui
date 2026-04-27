@@ -147,19 +147,31 @@ const GroupDetailsScreen = () => {
           >
             <span aria-hidden>←</span> Back to home
           </Link>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {groupDetails?.title ?? "Group"}
-            </h1>
-            {groupDetails ? (
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                {groupMeta(groupDetails)}
-              </p>
-            ) : (
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                View this group&apos;s details and settings.
-              </p>
-            )}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                {groupDetails?.title ?? "Group"}
+              </h1>
+              {groupDetails ? (
+                <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                  {groupMeta(groupDetails)}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                  View this group&apos;s details and settings.
+                </p>
+              )}
+            </div>
+            {groupId && !groupDetailsIsPending && group && groupDetails ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full shrink-0 sm:mt-0.5 sm:w-auto"
+                onClick={() => navigate(`/group/${encodeURIComponent(groupId)}/edit`)}
+              >
+                Edit group
+              </Button>
+            ) : null}
           </div>
         </div>
       </header>
@@ -254,7 +266,7 @@ const GroupDetailsScreen = () => {
                                   type="button"
                                   size="sm"
                                   variant="primary"
-                                  className="w-auto min-w-0"
+                                  className="w-auto min-w-0 cursor-pointer"
                                   disabled={completeMutation.isPending}
                                   onClick={() => {
                                     if (!remGroupId) return;
@@ -267,7 +279,7 @@ const GroupDetailsScreen = () => {
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="w-auto min-w-0"
+                                  className="w-auto min-w-0 cursor-pointer"
                                   disabled={completeMutation.isPending}
                                   onClick={() => {
                                     if (!remGroupId) return;

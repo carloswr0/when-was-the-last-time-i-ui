@@ -58,6 +58,12 @@ export type CreateGroupBody = {
   type: GroupTypeType;
 };
 
+export type UpdateGroupBody = {
+  title: string;
+  description?: string;
+  type: GroupTypeType;
+};
+
 export type CreateGroupReminderBody = {
   title: string;
   description?: string;

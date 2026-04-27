@@ -119,7 +119,7 @@ const IncomingDeadlines = () => {
                         type="button"
                         size="sm"
                         variant="primary"
-                        className="w-auto min-w-0"
+                        className="w-auto min-w-0 cursor-pointer"
                         disabled={completeMutation.isPending}
                         onClick={() => {
                           if (!groupId) return;
@@ -132,7 +132,7 @@ const IncomingDeadlines = () => {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="w-auto min-w-0"
+                        className="w-auto min-w-0 cursor-pointer"
                         disabled={completeMutation.isPending}
                         onClick={() => {
                           if (!groupId) return;
