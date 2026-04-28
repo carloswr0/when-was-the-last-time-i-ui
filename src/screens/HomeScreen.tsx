@@ -2,8 +2,17 @@ import { Link } from "react-router";
 import { cn } from "../lib/cn";
 import IncomingDeadlines from "../components/sections/IncomingDeadlines";
 import YourGroups from "../components/sections/YourGroups";
+import { useQuery } from "@tanstack/react-query";
+import { userGroupsQueryKey, getUserGroups } from "../services/groups.service";
 
 const HomeScreen = () => {
+  const { data } = useQuery({
+    queryKey: userGroupsQueryKey,
+    queryFn: getUserGroups,
+  });
+  const groups = data?.data ?? [];
+  const hasInvitedGroup = groups.some((g) => g.role === "invited");
+
   return (
     <div className="relative flex min-h-dvh flex-col bg-background text-foreground">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -25,15 +34,24 @@ const HomeScreen = () => {
         aria-label="Home actions"
       >
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
-          <Link
-            to="/settings"
-            className={cn(
-              "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-[opacity,background-color] sm:w-auto sm:text-base",
-              "hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background",
-            )}
-          >
-            Settings
-          </Link>
+          <span className="relative inline-flex w-full sm:w-auto">
+            <Link
+              to="/settings"
+              title={hasInvitedGroup ? "You have a pending group invitation" : undefined}
+              className={cn(
+                "inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-[opacity,background-color] sm:w-auto sm:text-base",
+                "hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background",
+              )}
+            >
+              Settings
+            </Link>
+            {hasInvitedGroup ? (
+              <span
+                className="pointer-events-none absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background"
+                aria-hidden
+              />
+            ) : null}
+          </span>
           <Link
             to="/group/new"
             className={cn(

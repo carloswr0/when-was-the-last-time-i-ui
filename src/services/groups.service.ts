@@ -1,5 +1,5 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, put, post } from "../lib/request";
+import { get, post, postWithoutBody, put } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { CreateGroupBody, GroupType, UpdateGroupBody, UserReminderGroupType } from "../types";
 
@@ -59,6 +59,16 @@ export function inviteToGroup(groupId: string, email: string) {
     groupsApiRoute,
     `/${encodeURIComponent(groupId)}/invite`,
     { email },
+    undefined,
+    true,
+  );
+}
+
+/** POST /api/groups/:group_id/accept-invitation */
+export function acceptGroupInvitation(groupId: string) {
+  return postWithoutBody(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}/accept-invitation`,
     undefined,
     true,
   );

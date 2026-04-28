@@ -12,7 +12,11 @@ import {
   resolvedTheme,
   type ThemePreference,
 } from "../lib/theme";
-import { getInvitedGroups, userGroupsQueryKey } from "../services/groups.service";
+import {
+  acceptGroupInvitation,
+  getInvitedGroups,
+  userGroupsQueryKey,
+} from "../services/groups.service";
 import {
   uploadUserAvatar,
   userInvitedQueryKey,
@@ -160,6 +164,16 @@ const SettingsScreen = () => {
     [inviteQuery.data?.data],
   );
 
+  const acceptInviteMutation = useMutation({
+    mutationFn: (groupId: string) => acceptGroupInvitation(groupId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: userInvitedQueryKey(userId ?? "") }),
+        queryClient.invalidateQueries({ queryKey: userGroupsQueryKey }),
+      ]);
+    },
+  });
+
   const avatarMutation = useMutation({
     mutationFn: (file: File) => uploadUserAvatar(userId!, file),
     onSuccess: async (res) => {
@@ -260,7 +274,7 @@ const SettingsScreen = () => {
               </h2>
               <Card className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold tracking-tight">Profile picture</h3>
+                  <h3 className="text-lg font-semibold tracking-tight">Profile picture ⚠️UNDER CONSTRUCTION⚠️</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Upload an image — it stays on your groups and reminders that show your avatar.
                   </p>
@@ -329,22 +343,51 @@ const SettingsScreen = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4 p-4 sm:p-8">
-                    {invitedRows.map((row) => (
-                      <Link
-                        key={row.key}
-                        to={`/group/${row.groupId}`}
-                        className="group flex w-full items-start gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 text-left shadow-sm transition-[background-color,box-shadow] hover:-translate-y-0.5 hover:bg-background hover:shadow-md hover:ring-1 hover:ring-primary/15 hover:dark:ring-primary/20 dark:bg-background/40 dark:hover:bg-background/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background"
-                      >
-                        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
-                          {row.initials}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-medium text-foreground">{row.title}</span>
-                          <span className="mt-0.5 block text-sm text-muted-foreground">{row.meta}</span>
-                          <span className="mt-1 block text-xs text-muted-foreground/90">{row.snippet}</span>
-                        </span>
-                      </Link>
-                    ))}
+                    {acceptInviteMutation.isError ? (
+                      <p className="text-sm text-error">
+                        {getErrorMessage(acceptInviteMutation.error)}
+                      </p>
+                    ) : null}
+                    {invitedRows.map((row) => {
+                      const acceptingThis =
+                        acceptInviteMutation.isPending &&
+                        acceptInviteMutation.variables === row.groupId;
+                      return (
+                        <div
+                          key={row.key}
+                          className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 px-4 py-3.5 shadow-sm transition-[background-color,box-shadow] hover:-translate-y-0.5 hover:bg-background hover:shadow-md hover:ring-1 hover:ring-primary/15 hover:dark:ring-primary/20 dark:bg-background/40 dark:hover:bg-background/80 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <Link
+                            to={`/group/${row.groupId}`}
+                            className="group flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-background"
+                          >
+                            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary">
+                              {row.initials}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium text-foreground">{row.title}</span>
+                              <span className="mt-0.5 block text-sm text-muted-foreground">
+                                {row.meta}
+                              </span>
+                              <span className="mt-1 block text-xs text-muted-foreground/90">
+                                {row.snippet}
+                              </span>
+                            </span>
+                          </Link>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            className="w-full shrink-0 sm:w-auto"
+                            disabled={acceptInviteMutation.isPending}
+                            aria-busy={acceptingThis}
+                            onClick={() => acceptInviteMutation.mutate(row.groupId)}
+                          >
+                            {acceptingThis ? "Accepting…" : "Accept"}
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </Card>

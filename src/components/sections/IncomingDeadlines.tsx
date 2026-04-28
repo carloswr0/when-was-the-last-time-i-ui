@@ -18,7 +18,6 @@ const IncomingDeadlines = () => {
     null,
   );
   const [alternateLocal, setAlternateLocal] = useState("");
-  const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
 
   const userId = useMemo(() => {
     const fromToken = getStoredAuthUserId();
@@ -100,49 +99,22 @@ const IncomingDeadlines = () => {
               const groupId = item.remindersGroup;
               const isAlternateOpen =
                 alternateFor?.groupId === groupId && alternateFor?.reminderId === item.id;
-              const showActionButtons = expandedReminderId === item.id || isAlternateOpen;
-              const rowExpanded = expandedReminderId === item.id || isAlternateOpen;
               return (
                 <ReminderItem
                   key={item.id}
                   item={item}
                   className="rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl"
-                  expanded={rowExpanded}
-                  headerDisabled={isAlternateOpen}
-                  onHeaderClick={() =>
-                    setExpandedReminderId((cur) => (cur === item.id ? null : item.id))
+                  expanded={isAlternateOpen}
+                  actionsDisabled={completeMutation.isPending}
+                  onComplete={
+                    groupId
+                      ? () => completeMutation.mutate({ groupId, reminderId: item.id })
+                      : undefined
+                  }
+                  onCompleteAnotherTime={
+                    groupId ? () => openAlternatePicker(groupId, item.id) : undefined
                   }
                 >
-                  {showActionButtons ? (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="primary"
-                        className="w-auto min-w-0 cursor-pointer"
-                        disabled={completeMutation.isPending}
-                        onClick={() => {
-                          if (!groupId) return;
-                          completeMutation.mutate({ groupId, reminderId: item.id });
-                        }}
-                      >
-                        Complete!
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="w-auto min-w-0 cursor-pointer"
-                        disabled={completeMutation.isPending}
-                        onClick={() => {
-                          if (!groupId) return;
-                          openAlternatePicker(groupId, item.id);
-                        }}
-                      >
-                        Already completed this another time
-                      </Button>
-                    </div>
-                  ) : null}
                   {isAlternateOpen ? (
                     <div
                       className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
