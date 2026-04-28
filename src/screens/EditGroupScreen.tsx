@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import { GroupForm } from "../components/sections/GroupForm";
+import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { getErrorMessage } from "../lib/api-errors";
 import {
+  deleteGroup,
   getGroup,
   groupDetailQueryKey,
   updateGroup,
   userGroupsQueryKey,
 } from "../services/groups.service";
+import { groupRemindersQueryKey } from "../services/reminders.service";
 import type { UpdateGroupBody } from "../types";
 
 const EditGroupScreen = () => {
@@ -39,6 +42,25 @@ const EditGroupScreen = () => {
       navigate(groupId ? `/group/${encodeURIComponent(groupId)}` : "/home");
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteGroup(groupId!),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: userGroupsQueryKey });
+      if (groupId) {
+        queryClient.removeQueries({ queryKey: groupDetailQueryKey(groupId) });
+        queryClient.removeQueries({ queryKey: groupRemindersQueryKey(groupId) });
+      }
+      navigate("/home");
+    },
+  });
+
+  const formBusy = mutation.isPending || deleteMutation.isPending;
+
+  function handleDeleteGroup() {
+    if (!groupId) return;
+    deleteMutation.mutate();
+  }
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-background text-foreground">
@@ -87,8 +109,12 @@ const EditGroupScreen = () => {
                 description: groupDetails.description?.trim() ?? "",
                 type: groupDetails.type,
               }}
-              formError={mutation.isError ? getErrorMessage(mutation.error) : undefined}
-              isSubmitting={mutation.isPending}
+              formError={
+                mutation.isError || deleteMutation.isError
+                  ? getErrorMessage(mutation.error ?? deleteMutation.error)
+                  : undefined
+              }
+              isSubmitting={formBusy}
               onCancel={() => navigate(`/group/${encodeURIComponent(groupId)}`)}
               onSubmit={(values) => {
                 mutation.mutate({
@@ -98,6 +124,20 @@ const EditGroupScreen = () => {
                 });
               }}
             />
+            <div className="mt-6 flex flex-col items-center border-t border-border/80 py-6 text-center">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Deleting removes this group and its reminders for all members.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-error/50 text-error hover:bg-error/10 hover:text-error focus-visible:ring-error sm:w-auto"
+                disabled={formBusy}
+                onClick={handleDeleteGroup}
+              >
+                {deleteMutation.isPending ? "Deleting…" : "Delete group"}
+              </Button>
+            </div>
           </Card>
         )}
       </main>

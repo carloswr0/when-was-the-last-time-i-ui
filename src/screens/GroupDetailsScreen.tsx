@@ -13,11 +13,14 @@ import {
 } from "../services/groups.service";
 import {
   completeGroupReminder,
+  deleteGroupReminder,
   getAllGroupReminders,
   groupRemindersQueryKey,
   userRemindersQueryKey,
 } from "../services/reminders.service";
-import { ReminderItem } from "../components/ui/ReminderItem";
+import {
+  ReminderItem,
+} from "../components/ui/ReminderItem";
 import type { GroupType, UserReminderGroupType } from "../types";
 
 function memberInitials(name: string): string {
@@ -84,6 +87,19 @@ const GroupDetailsScreen = () => {
   const completeMutation = useMutation({
     mutationFn: (args: { groupId: string; reminderId: string; lastUpdateAt?: string }) =>
       completeGroupReminder(args.groupId, args.reminderId, args.lastUpdateAt),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: groupRemindersQueryKey(variables.groupId) });
+      if (userId) {
+        await queryClient.invalidateQueries({ queryKey: userRemindersQueryKey(userId) });
+      }
+      setAlternateFor(null);
+      setAlternateLocal("");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (args: { groupId: string; reminderId: string }) =>
+      deleteGroupReminder(args.groupId, args.reminderId),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: groupRemindersQueryKey(variables.groupId) });
       if (userId) {
@@ -283,8 +299,10 @@ const GroupDetailsScreen = () => {
                 <p className="mt-3 text-sm text-muted-foreground">No reminders in this group yet.</p>
               ) : (
                 <div className="mt-4">
-                  {completeMutation.isError ? (
-                    <p className="text-sm text-error">{getErrorMessage(completeMutation.error)}</p>
+                  {completeMutation.isError || deleteMutation.isError ? (
+                    <p className="text-sm text-error">
+                      {getErrorMessage(completeMutation.error ?? deleteMutation.error)}
+                    </p>
                   ) : null}
                   <ul className="flex list-none flex-col gap-4 p-0" role="list" aria-label="Group reminders">
                     {sortedReminders.map((item) => {
@@ -296,7 +314,14 @@ const GroupDetailsScreen = () => {
                           <ReminderItem
                             item={item}
                             expanded={isAlternateOpen}
-                            actionsDisabled={completeMutation.isPending}
+                            actionsDisabled={completeMutation.isPending || deleteMutation.isPending}
+                            alternateDateTimeLocal={isAlternateOpen ? alternateLocal : ""}
+                            onAlternateDateTimeChange={setAlternateLocal}
+                            onAlternateSubmit={submitAlternate}
+                            onAlternateCancel={() => {
+                              setAlternateFor(null);
+                              setAlternateLocal("");
+                            }}
                             onComplete={
                               remGroupId
                                 ? () =>
@@ -309,54 +334,12 @@ const GroupDetailsScreen = () => {
                             onCompleteAnotherTime={
                               remGroupId ? () => openAlternatePicker(remGroupId, item.id) : undefined
                             }
-                          >
-                            {isAlternateOpen ? (
-                              <div
-                                className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
-                                role="group"
-                                aria-label="When did you complete this?"
-                              >
-                                <label
-                                  htmlFor={`group-alternate-at-${item.id}`}
-                                  className="text-sm font-medium text-foreground"
-                                >
-                                  When did you complete this?
-                                </label>
-                                <input
-                                  id={`group-alternate-at-${item.id}`}
-                                  type="datetime-local"
-                                  value={alternateLocal}
-                                  onChange={(e) => setAlternateLocal(e.target.value)}
-                                  className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                />
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="primary"
-                                    className="w-auto"
-                                    disabled={!alternateLocal || completeMutation.isPending}
-                                    onClick={submitAlternate}
-                                  >
-                                    Submit
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="w-auto"
-                                    disabled={completeMutation.isPending}
-                                    onClick={() => {
-                                      setAlternateFor(null);
-                                      setAlternateLocal("");
-                                    }}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </ReminderItem>
+                            onDelete={
+                              remGroupId
+                                ? () => deleteMutation.mutate({ groupId: remGroupId, reminderId: item.id })
+                                : undefined
+                            }
+                          />
                         </li>
                       );
                     })}

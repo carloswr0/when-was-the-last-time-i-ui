@@ -1,5 +1,5 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, post, postWithoutBody } from "../lib/request";
+import { del, get, post, postWithoutBody } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { CreateGroupReminderBody, Reminders } from "../types";
 import { userApiRoute } from "./user.service";
@@ -43,6 +43,16 @@ export function completeGroupReminder(
     return post(groupsApiRoute, path, { lastUpdateAt }, undefined, true);
   }
   return postWithoutBody(groupsApiRoute, path, undefined, true);
+}
+
+/** DELETE /api/groups/:group_id/reminder/:reminder_id */
+export function deleteGroupReminder(groupId: string, reminderId: string) {
+  return del(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}/reminder/${encodeURIComponent(reminderId)}`,
+    undefined,
+    true,
+  );
 }
 
 /** GET /api/user/:user_id/get-all-reminders */

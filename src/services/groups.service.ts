@@ -1,5 +1,5 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, post, postWithoutBody, put } from "../lib/request";
+import { del, get, post, postWithoutBody, put } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { CreateGroupBody, GroupType, UpdateGroupBody, UserReminderGroupType } from "../types";
 
@@ -48,6 +48,16 @@ export function updateGroup(groupId: string, body: UpdateGroupBody) {
     groupsApiRoute,
     `/${encodeURIComponent(groupId)}`,
     body,
+    undefined,
+    true,
+  );
+}
+
+/** DELETE /api/groups/:group_id */
+export function deleteGroup(groupId: string) {
+  return del(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}`,
     undefined,
     true,
   );

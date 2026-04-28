@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { CalendarClock, Check, Pencil, Trash2 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { ReminderType, type Reminders } from "../../types";
+import { Button } from "./Button";
 import { WithTooltip } from "./WithTooltip";
 
 function reminderMeta(r: Reminders): string {
@@ -42,6 +43,11 @@ export type ReminderItemProps = {
   /** Disables action icons (e.g. while a mutation is in flight). */
   actionsDisabled?: boolean;
   children?: ReactNode;
+  /** `datetime-local` value when recording completion at another time (controlled by parent when expanded). */
+  alternateDateTimeLocal?: string;
+  onAlternateDateTimeChange?: (value: string) => void;
+  onAlternateSubmit?: () => void;
+  onAlternateCancel?: () => void;
 };
 
 export function ReminderItem({
@@ -56,6 +62,10 @@ export function ReminderItem({
   onEdit,
   actionsDisabled = false,
   children,
+  alternateDateTimeLocal = "",
+  onAlternateDateTimeChange,
+  onAlternateSubmit,
+  onAlternateCancel,
 }: ReminderItemProps) {
   const rowExpanded = expanded;
   const hasTrayAction =
@@ -144,6 +154,13 @@ export function ReminderItem({
     </div>
   ) : null;
 
+  const alternateInputId = `alternate-complete-${item.id}`;
+  const showAlternatePanel =
+    rowExpanded && onAlternateSubmit != null && onAlternateCancel != null;
+  const alternateSubmitDisabled =
+    actionsDisabled || !alternateDateTimeLocal.trim();
+  const alternateCancelDisabled = actionsDisabled;
+
   const headerRow = onHeaderClick ? (
     <div className="flex w-full min-w-0 items-start gap-3">
       <button
@@ -184,6 +201,46 @@ export function ReminderItem({
       )}
     >
       {headerRow}
+      {showAlternatePanel ? (
+        <div
+          className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
+          role="group"
+          aria-label="When did you complete this?"
+        >
+          <label htmlFor={alternateInputId} className="text-sm font-medium text-foreground">
+            When did you complete this?
+          </label>
+          <input
+            id={alternateInputId}
+            type="datetime-local"
+            value={alternateDateTimeLocal}
+            onChange={(e) => onAlternateDateTimeChange?.(e.target.value)}
+            className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              className="w-auto"
+              disabled={alternateSubmitDisabled}
+              onClick={() => onAlternateSubmit()}
+            >
+              Submit
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="w-auto"
+              disabled={alternateCancelDisabled}
+              onClick={() => onAlternateCancel()}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {children}
     </div>
   );

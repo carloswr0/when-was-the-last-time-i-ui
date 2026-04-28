@@ -136,7 +136,7 @@ export function GroupForm({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+      <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
         <Button type="button" variant="outline" className="sm:w-auto" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>

@@ -4,13 +4,15 @@ import { getErrorMessage } from "../../lib/api-errors";
 import { sortRemindersByLastUpdatedAt } from "../../lib/sort-reminders-by-updated";
 import {
   completeGroupReminder,
+  deleteGroupReminder,
   getAllUserReminders,
   userRemindersQueryKey,
 } from "../../services/reminders.service";
-import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { getStoredAuthUserId } from "../../lib/auth-token";
-import { ReminderItem } from "../ui/ReminderItem";
+import {
+  ReminderItem,
+} from "../ui/ReminderItem";
 
 const IncomingDeadlines = () => {
   const queryClient = useQueryClient();
@@ -27,6 +29,18 @@ const IncomingDeadlines = () => {
   const completeMutation = useMutation({
     mutationFn: (args: { groupId: string; reminderId: string; lastUpdateAt?: string }) =>
       completeGroupReminder(args.groupId, args.reminderId, args.lastUpdateAt),
+    onSuccess: async () => {
+      if (userId) {
+        await queryClient.invalidateQueries({ queryKey: userRemindersQueryKey(userId) });
+      }
+      setAlternateFor(null);
+      setAlternateLocal("");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (args: { groupId: string; reminderId: string }) =>
+      deleteGroupReminder(args.groupId, args.reminderId),
     onSuccess: async () => {
       if (userId) {
         await queryClient.invalidateQueries({ queryKey: userRemindersQueryKey(userId) });
@@ -92,8 +106,10 @@ const IncomingDeadlines = () => {
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">No reminders yet.</div>
         ) : (
           <>
-            {completeMutation.isError ? (
-              <div className="px-4 py-2 text-sm text-error">{getErrorMessage(completeMutation.error)}</div>
+            {completeMutation.isError || deleteMutation.isError ? (
+              <div className="px-4 py-2 text-sm text-error">
+                {getErrorMessage(completeMutation.error ?? deleteMutation.error)}
+              </div>
             ) : null}
             {sortedReminders.map((item) => {
               const groupId = item.remindersGroup;
@@ -105,7 +121,14 @@ const IncomingDeadlines = () => {
                   item={item}
                   className="rounded-none border-0 first:rounded-t-2xl last:rounded-b-2xl"
                   expanded={isAlternateOpen}
-                  actionsDisabled={completeMutation.isPending}
+                  actionsDisabled={completeMutation.isPending || deleteMutation.isPending}
+                  alternateDateTimeLocal={isAlternateOpen ? alternateLocal : ""}
+                  onAlternateDateTimeChange={setAlternateLocal}
+                  onAlternateSubmit={submitAlternate}
+                  onAlternateCancel={() => {
+                    setAlternateFor(null);
+                    setAlternateLocal("");
+                  }}
                   onComplete={
                     groupId
                       ? () => completeMutation.mutate({ groupId, reminderId: item.id })
@@ -114,51 +137,12 @@ const IncomingDeadlines = () => {
                   onCompleteAnotherTime={
                     groupId ? () => openAlternatePicker(groupId, item.id) : undefined
                   }
-                >
-                  {isAlternateOpen ? (
-                    <div
-                      className="flex flex-col gap-2 rounded-lg border border-border/80 bg-background/80 p-3 dark:bg-background/60"
-                      role="group"
-                      aria-label="When did you complete this?"
-                    >
-                      <label htmlFor={`alternate-at-${item.id}`} className="text-sm font-medium text-foreground">
-                        When did you complete this?
-                      </label>
-                      <input
-                        id={`alternate-at-${item.id}`}
-                        type="datetime-local"
-                        value={alternateLocal}
-                        onChange={(e) => setAlternateLocal(e.target.value)}
-                        className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="primary"
-                          className="w-auto"
-                          disabled={!alternateLocal || completeMutation.isPending}
-                          onClick={submitAlternate}
-                        >
-                          Submit
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="w-auto"
-                          disabled={completeMutation.isPending}
-                          onClick={() => {
-                            setAlternateFor(null);
-                            setAlternateLocal("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                </ReminderItem>
+                  onDelete={
+                    groupId
+                      ? () => deleteMutation.mutate({ groupId, reminderId: item.id })
+                      : undefined
+                  }
+                />
               );
             })}
           </>

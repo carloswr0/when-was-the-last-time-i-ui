@@ -140,6 +140,33 @@ export async function get(
   return data;
 }
 
+export async function del(
+  route: string,
+  path: string,
+  searchParams?: Record<string, string>,
+  withAuth = false,
+) {
+  const url =
+    searchParams == null
+      ? `${route}${path}`
+      : `${route}${path}?${new URLSearchParams(searchParams)}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      ...(withAuth ? bearerHeaders() : {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      messageFromBody(data) ??
+      (res.statusText || `Request failed (${res.status})`);
+    throw new HttpError(msg, res.status, data);
+  }
+  return data;
+}
+
 /** multipart/form-data POST (omit Content-Type so the browser sets the boundary). */
 export async function postFormData(route: string, path: string, body: FormData, withAuth = false) {
   const url = `${route}${path}`;
