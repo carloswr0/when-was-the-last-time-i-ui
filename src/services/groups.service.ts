@@ -1,5 +1,5 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, patch, post } from "../lib/request";
+import { get, put, post } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { CreateGroupBody, GroupType, UpdateGroupBody, UserReminderGroupType } from "../types";
 
@@ -44,11 +44,33 @@ export async function getGroup(
 
 /** PATCH /api/groups/:group_id */
 export function updateGroup(groupId: string, body: UpdateGroupBody) {
-  return patch(
+  return put(
     groupsApiRoute,
     `/${encodeURIComponent(groupId)}`,
     body,
     undefined,
     true,
   );
+}
+
+/** POST /api/groups/:group_id/invite */
+export function inviteToGroup(groupId: string, email: string) {
+  return post(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}/invite`,
+    { email },
+    undefined,
+    true,
+  );
+}
+
+/** GET /api/groups/invited */
+export async function getInvitedGroups(): Promise<StandardApiResponse<unknown>> {
+  const data = await get(
+    groupsApiRoute,
+    `/invited`,
+    undefined,
+    true,
+  );
+  return data;
 }

@@ -2,9 +2,9 @@ import { ENVIRONTMENT } from "../../config/environment.config";
 import { get, post, postWithoutBody } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { CreateGroupReminderBody, Reminders } from "../types";
+import { userApiRoute } from "./user.service";
 
 const groupsApiRoute = `${ENVIRONTMENT.URL_BACKEND}/api/groups`;
-const userApiRoute = `${ENVIRONTMENT.URL_BACKEND}/api/user`;
 
 export const groupRemindersQueryKey = (groupId: string) => ["group", groupId, "reminders"];
 

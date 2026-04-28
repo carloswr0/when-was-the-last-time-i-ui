@@ -9,6 +9,7 @@ import { sortRemindersByLastUpdatedAt } from "../lib/sort-reminders-by-updated";
 import {
   getGroup,
   groupDetailQueryKey,
+  inviteToGroup,
 } from "../services/groups.service";
 import {
   completeGroupReminder,
@@ -68,8 +69,18 @@ const GroupDetailsScreen = () => {
   );
   const [alternateLocal, setAlternateLocal] = useState("");
   const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const userId = useMemo(() => getStoredAuthUserId(), []);
+
+  const inviteMutation = useMutation({
+    mutationFn: (args: { groupId: string; email: string }) =>
+      inviteToGroup(args.groupId, args.email),
+    onSuccess: async (_, variables) => {
+      setInviteEmail("");
+      await queryClient.invalidateQueries({ queryKey: groupDetailQueryKey(variables.groupId) });
+    },
+  });
 
   const completeMutation = useMutation({
     mutationFn: (args: { groupId: string; reminderId: string; lastUpdateAt?: string }) =>
@@ -206,6 +217,39 @@ const GroupDetailsScreen = () => {
                   New reminder
                 </Button>
               </div>
+              {groupId ? (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <label htmlFor="group-invite-email" className="sr-only">
+                    Email to invite
+                  </label>
+                  <input
+                    id="group-invite-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                  <Button
+                    type="button"
+                    className="w-full shrink-0 sm:w-auto"
+                    disabled={
+                      !inviteEmail.trim() || inviteMutation.isPending
+                    }
+                    onClick={() => {
+                      const email = inviteEmail.trim();
+                      if (!email) return;
+                      inviteMutation.mutate({ groupId, email });
+                    }}
+                  >
+                    Invite
+                  </Button>
+                </div>
+              ) : null}
+              {inviteMutation.isError ? (
+                <p className="mt-2 text-sm text-error">{getErrorMessage(inviteMutation.error)}</p>
+              ) : null}
               {groupMembers && groupMembers.length > 0 ? (
                 <div>
 

@@ -2,6 +2,15 @@
 <html lang="en">
 
 <head>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (t === "dark") document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
+      } catch (_) {}
+    })();
+  </script>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.webp" />
   <link href="/index.css" rel="stylesheet">

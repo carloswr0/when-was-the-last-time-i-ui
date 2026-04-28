@@ -84,7 +84,7 @@ export async function postWithoutBody(
   return data;
 }
 
-export async function patch(
+export async function put(
   route: string,
   path: string,
   body: object,
@@ -96,7 +96,7 @@ export async function patch(
       ? `${route}${path}`
       : `${route}${path}?${new URLSearchParams(searchParams)}`;
   const res = await fetch(url, {
-    method: "PATCH",
+    method: "PUT",
     headers: {
       ...jsonHeaders,
       ...(withAuth ? bearerHeaders() : {}),
@@ -129,6 +129,26 @@ export async function get(
       Accept: "application/json",
       ...(withAuth ? bearerHeaders() : {}),
     },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      messageFromBody(data) ??
+      (res.statusText || `Request failed (${res.status})`);
+    throw new HttpError(msg, res.status, data);
+  }
+  return data;
+}
+
+/** multipart/form-data POST (omit Content-Type so the browser sets the boundary). */
+export async function postFormData(route: string, path: string, body: FormData, withAuth = false) {
+  const url = `${route}${path}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...(withAuth ? bearerHeaders() : {}),
+    },
+    body,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
