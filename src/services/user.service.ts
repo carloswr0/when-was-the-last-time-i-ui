@@ -1,5 +1,5 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { get, postFormData } from "../lib/request";
+import { postFormData } from "../lib/request";
 import type { StandardApiResponse } from "../models";
 import type { UserType } from "../types";
 

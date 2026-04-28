@@ -75,7 +75,7 @@ const YourGroups = () => {
           </div>
         ) : (
           <div className="gap-4 flex flex-col sm:p-8 p-4">{
-            groups.map((group) => (
+            groups.filter((g) => g.role !== "invited").map((group) => (
               <Link
                 key={group.id}
                 to={`/group/${group.remindersGroup.id}`}
