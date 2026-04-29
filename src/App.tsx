@@ -12,6 +12,7 @@ import NewGroupScreen from "./screens/NewGroupScreen";
 import EditGroupScreen from "./screens/EditGroupScreen";
 import GroupDetailsScreen from "./screens/GroupDetailsScreen";
 import NewGroupReminderScreen from "./screens/NewGroupReminderScreen";
+import EditGroupReminderScreen from "./screens/EditGroupReminderScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 /** Remount when `?token=` changes so token state stays in sync with the URL. */
@@ -40,6 +41,10 @@ const App = () => {
         <Route path="/group/:groupId/edit" element={<EditGroupScreen />} />
         <Route path="/group/:groupId" element={<GroupDetailsScreen />} />
         <Route path="/group/:groupId/reminders/new" element={<NewGroupReminderScreen />} />
+        <Route
+          path="/group/:groupId/reminders/:reminderId/edit"
+          element={<EditGroupReminderScreen />}
+        />
       </Route>
     </Routes>
   );

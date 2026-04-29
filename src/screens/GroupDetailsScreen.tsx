@@ -339,6 +339,14 @@ const GroupDetailsScreen = () => {
                                 ? () => deleteMutation.mutate({ groupId: remGroupId, reminderId: item.id })
                                 : undefined
                             }
+                            onEdit={
+                              remGroupId
+                                ? () =>
+                                    navigate(
+                                      `/group/${encodeURIComponent(remGroupId)}/reminders/${encodeURIComponent(item.id)}/edit`,
+                                    )
+                                : undefined
+                            }
                           />
                         </li>
                       );

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { getErrorMessage } from "../../lib/api-errors";
 import { sortRemindersByLastUpdatedAt } from "../../lib/sort-reminders-by-updated";
 import {
@@ -15,6 +16,7 @@ import {
 } from "../ui/ReminderItem";
 
 const IncomingDeadlines = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [alternateFor, setAlternateFor] = useState<{ groupId: string; reminderId: string } | null>(
     null,
@@ -129,6 +131,7 @@ const IncomingDeadlines = () => {
                     setAlternateFor(null);
                     setAlternateLocal("");
                   }}
+                  
                   onComplete={
                     groupId
                       ? () => completeMutation.mutate({ groupId, reminderId: item.id })
@@ -140,6 +143,14 @@ const IncomingDeadlines = () => {
                   onDelete={
                     groupId
                       ? () => deleteMutation.mutate({ groupId, reminderId: item.id })
+                      : undefined
+                  }
+                  onEdit={
+                    groupId
+                      ? () =>
+                          navigate(
+                            `/group/${encodeURIComponent(groupId)}/reminders/${encodeURIComponent(item.id)}/edit`,
+                          )
                       : undefined
                   }
                 />

@@ -74,3 +74,6 @@ export type CreateGroupReminderBody = {
   frequency: number;
   pushNotificationsEnabled: boolean;
 };
+
+/** PATCH /api/groups/:group_id/reminder/:reminder_id — partial updates supported by the API. */
+export type PatchGroupReminderBody = Partial<CreateGroupReminderBody>;

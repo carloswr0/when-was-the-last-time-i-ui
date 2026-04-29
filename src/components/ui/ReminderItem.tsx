@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { CalendarClock, Check, Pencil, Trash2 } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { formatFrequencyLabel } from "../../lib/frequencyPresets";
 import { ReminderType, type Reminders } from "../../types";
 import { Button } from "./Button";
 import { WithTooltip } from "./WithTooltip";
@@ -8,7 +9,7 @@ import { WithTooltip } from "./WithTooltip";
 function reminderMeta(r: Reminders): string {
   const d = r.description?.trim();
   const updated = r.lastUpdatedAt
-    ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleString()}`
+    ? `Last updated ${new Date(r.lastUpdatedAt).toLocaleDateString()}`
     : "Never updated";
   if (d) return d.length > 80 ? `${d.slice(0, 77)}… · ${updated}` : `${d} · ${updated}`;
   return updated;
@@ -26,7 +27,7 @@ const reminderItemRowHoverClass =
   "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-primary/15 hover:dark:ring-primary/20";
 
 const iconBtnClass =
-  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent text-muted-foreground transition-colors outline-offset-2 hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-40";
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-0 cursor-pointer bg-transparent text-muted-foreground transition-colors outline-offset-2 hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/30 disabled:pointer-events-none disabled:opacity-40";
 
 export type ReminderItemProps = {
   item: Reminders;
@@ -68,6 +69,8 @@ export function ReminderItem({
   onAlternateCancel,
 }: ReminderItemProps) {
   const rowExpanded = expanded;
+  const frequencyLabel =
+    item.type === ReminderType.recurring ? formatFrequencyLabel(item.frequency) : "";
   const hasTrayAction =
     onComplete != null ||
     onCompleteAnotherTime != null ||
@@ -75,7 +78,7 @@ export function ReminderItem({
     onEdit != null;
 
   const titleBlock = (
-    <span className="min-w-0 flex-1">
+    <span className="min-w-0 w-full sm:flex-1">
       <span
         className={cn(
           "block font-medium",
@@ -87,6 +90,13 @@ export function ReminderItem({
         {item.title}
       </span>
       <span className="mt-0.5 block text-sm text-muted-foreground">{reminderMeta(item)}</span>
+      {frequencyLabel ? (
+        <span className="mt-0.5 block text-sm text-muted-foreground">
+          <span className="font-medium text-foreground/80">Frequency</span>
+          <span className="mx-1 text-border">·</span>
+          {frequencyLabel}
+        </span>
+      ) : null}
     </span>
   );
 
@@ -162,29 +172,29 @@ export function ReminderItem({
   const alternateCancelDisabled = actionsDisabled;
 
   const headerRow = onHeaderClick ? (
-    <div className="flex w-full min-w-0 items-start gap-3">
+    <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
       <button
         type="button"
         disabled={headerDisabled}
         aria-expanded={rowExpanded}
         aria-label={rowExpanded ? "Collapse reminder" : "Expand reminder"}
         className={cn(
-          "flex min-w-0 flex-1 select-none items-start gap-3 rounded-lg border-0 bg-transparent p-0 text-left font-inherit transition-colors outline-offset-2 enabled:cursor-pointer enabled:hover:bg-muted/20",
+          "flex w-full min-w-0 shrink-0 select-none items-start gap-3 rounded-lg border-0 bg-transparent p-0 text-left font-inherit transition-colors outline-offset-2 enabled:cursor-pointer enabled:hover:bg-muted/20 sm:flex-1 sm:shrink",
           "focus-visible:ring-2 focus-visible:ring-primary/30",
         )}
         onClick={onHeaderClick}
       >
         {titleBlock}
       </button>
-      <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-start">
+      <div className="flex w-full shrink-0 flex-col items-end gap-2 sm:w-auto sm:flex-row sm:items-start">
         {typeBadge}
         {actionTray}
       </div>
     </div>
   ) : (
-    <div className="flex w-full min-w-0 items-start gap-3">
+    <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
       {titleBlock}
-      <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-start">
+      <div className="flex w-full shrink-0 flex-col items-end gap-2 sm:w-auto sm:flex-row sm:items-start">
         {typeBadge}
         {actionTray}
       </div>

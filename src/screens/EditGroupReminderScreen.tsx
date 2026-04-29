@@ -1,5 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { type SyntheticEvent, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -7,13 +7,32 @@ import { TextArea } from "../components/ui/TextArea";
 import { TextField } from "../components/ui/TextField";
 import { cn } from "../lib/cn";
 import { getErrorMessage } from "../lib/api-errors";
+import { getStoredAuthUserId } from "../lib/auth-token";
 import { groupDetailQueryKey } from "../services/groups.service";
 import {
-  createGroupReminder,
+  getAllGroupReminders,
   groupRemindersQueryKey,
+  patchGroupReminder,
+  userRemindersQueryKey,
 } from "../services/reminders.service";
 import { ReminderType } from "../types";
-import { frequencyPresets } from "../lib/frequencyPresets";
+
+const H = (n: number) => n * 24;
+
+/** Preset value is hours (API); label is user-facing. */
+const frequencyPresets: { value: string; label: string }[] = [
+  { value: String(H(1)), label: "1 day" },
+  { value: String(H(2)), label: "2 days" },
+  { value: String(H(3)), label: "3 days" },
+  { value: String(H(7)), label: "1 week" },
+  { value: String(H(14)), label: "2 weeks" },
+  { value: String(H(30)), label: "1 month" },
+  { value: String(H(60)), label: "2 months" },
+  { value: String(H(90)), label: "3 months" },
+  { value: String(H(180)), label: "6 months" },
+  { value: String(H(365)), label: "1 year" },
+  { value: String(H(365 * 2)), label: "2 years" },
+];
 
 const frequencyCustomValue = "custom";
 
@@ -22,22 +41,24 @@ const reminderTypeOptions: {
   label: string;
   description: string;
 }[] = [
-    {
-      value: ReminderType.one_time,
-      label: "One-time",
-      description: "A single check-in you log when you need it.",
-    },
-    {
-      value: ReminderType.recurring,
-      label: "Recurring",
-      description: "Repeats on a regular interval you choose.",
-    },
-  ];
+  {
+    value: ReminderType.one_time,
+    label: "One-time",
+    description: "A single check-in you log when you need it.",
+  },
+  {
+    value: ReminderType.recurring,
+    label: "Recurring",
+    description: "Repeats on a regular interval you choose.",
+  },
+];
 
-const NewGroupReminderScreen = () => {
-  const { groupId } = useParams<{ groupId: string }>();
+const EditGroupReminderScreen = () => {
+  const { groupId, reminderId } = useParams<{ groupId: string; reminderId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const userId = useMemo(() => getStoredAuthUserId(), []);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("");
@@ -51,9 +72,54 @@ const NewGroupReminderScreen = () => {
   const [formError, setFormError] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const hydratedKeyRef = useRef<string | null>(null);
+
+  const {
+    data: groupRemindersData,
+    isPending: remindersLoading,
+    isError: remindersIsError,
+    error: remindersError,
+  } = useQuery({
+    queryKey: groupRemindersQueryKey(groupId ?? ""),
+    queryFn: () => getAllGroupReminders(groupId!),
+    enabled: Boolean(groupId),
+  });
+
+  const reminder = useMemo(() => {
+    const list = groupRemindersData?.data?.reminders ?? [];
+    return list.find((r) => r.id === reminderId);
+  }, [groupRemindersData?.data?.reminders, reminderId]);
+
+  useEffect(() => {
+    if (!groupId || !reminder) return;
+    const key = `${groupId}:${reminder.id}`;
+    if (hydratedKeyRef.current === key) return;
+    hydratedKeyRef.current = key;
+    setTitle(reminder.title);
+    setDescription(reminder.description?.trim() ? reminder.description : "");
+    setIcon(reminder.icon?.trim() ? reminder.icon : "");
+    setBannerImage(reminder.bannerImage?.trim() ? reminder.bannerImage : "");
+    setType(reminder.type);
+    const fh = reminder.frequency;
+    const preset = frequencyPresets.find((p) => p.value === String(fh));
+    if (preset) {
+      setFrequencyKey(preset.value);
+      setCustomFrequencyHours("");
+    } else if (reminder.type === ReminderType.recurring && Number.isFinite(fh) && fh >= 1) {
+      setFrequencyKey(frequencyCustomValue);
+      setCustomFrequencyHours(String(fh));
+    } else {
+      setFrequencyKey(frequencyPresets[0]!.value);
+      setCustomFrequencyHours("");
+    }
+    setPushNotificationsEnabled(reminder.pushNotificationsEnabled);
+  }, [groupId, reminder]);
+
+  const remindersLoadError = remindersIsError ? getErrorMessage(remindersError) : undefined;
+
   const handleSubmit = async (e: SyntheticEvent) => {
     e.preventDefault();
-    if (!groupId) return;
+    if (!groupId || !reminderId) return;
     setFormError(undefined);
     const trimmed = title.trim();
     if (!trimmed) {
@@ -79,7 +145,7 @@ const NewGroupReminderScreen = () => {
 
     setIsSubmitting(true);
     try {
-      await createGroupReminder(groupId, {
+      await patchGroupReminder(groupId, reminderId, {
         title: trimmed,
         description: description.trim() || undefined,
         icon: icon.trim() || undefined,
@@ -90,7 +156,10 @@ const NewGroupReminderScreen = () => {
       });
       await queryClient.invalidateQueries({ queryKey: groupRemindersQueryKey(groupId) });
       await queryClient.invalidateQueries({ queryKey: groupDetailQueryKey(groupId) });
-      navigate(groupId ? `/group/${encodeURIComponent(groupId)}` : "/home");
+      if (userId) {
+        await queryClient.invalidateQueries({ queryKey: userRemindersQueryKey(userId) });
+      }
+      navigate(`/group/${encodeURIComponent(groupId)}`);
     } catch (err) {
       setFormError(getErrorMessage(err));
     } finally {
@@ -116,24 +185,32 @@ const NewGroupReminderScreen = () => {
             <span aria-hidden>←</span> Back to group
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">New reminder</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Edit reminder</h1>
             <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-              Add something to track in this group.
+              Update this reminder&apos;s details.
             </p>
           </div>
         </div>
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-        {!groupId ? (
+        {!groupId || !reminderId ? (
           <Card className="p-6 text-center text-sm text-error">
-            Missing group in the URL.
+            Missing group or reminder in the URL.
+          </Card>
+        ) : remindersLoading ? (
+          <Card className="p-8 text-center text-sm text-muted-foreground">Loading reminder…</Card>
+        ) : remindersLoadError ? (
+          <Card className="p-6 text-center text-sm text-error">{remindersLoadError}</Card>
+        ) : !reminder ? (
+          <Card className="p-6 text-center text-sm text-muted-foreground">
+            This reminder could not be found in this group.
           </Card>
         ) : (
           <Card className="p-6">
             <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
               <TextField
-                id="reminder-title"
+                id="edit-reminder-title"
                 label="Title"
                 name="title"
                 value={title}
@@ -142,7 +219,7 @@ const NewGroupReminderScreen = () => {
                 autoComplete="off"
               />
               <TextArea
-                id="reminder-description"
+                id="edit-reminder-description"
                 name="description"
                 label="Description"
                 value={description}
@@ -152,7 +229,7 @@ const NewGroupReminderScreen = () => {
                 hint="Optional. Shown with this reminder in the list."
               />
               <TextField
-                id="reminder-icon"
+                id="edit-reminder-icon"
                 label="Icon"
                 name="icon"
                 value={icon}
@@ -162,7 +239,7 @@ const NewGroupReminderScreen = () => {
                 hint="Optional. Displayed in the list."
               />
               <TextField
-                id="reminder-banner"
+                id="edit-reminder-banner"
                 label="Banner image"
                 name="bannerImage"
                 value={bannerImage}
@@ -174,19 +251,19 @@ const NewGroupReminderScreen = () => {
               />
               <fieldset className="min-w-0">
                 <legend
-                  id="reminder-type-heading"
+                  id="edit-reminder-type-heading"
                   className="mb-2 text-sm font-medium text-foreground"
                 >
                   Type
                 </legend>
-                <p id="reminder-type-hint" className="mb-3 text-xs text-muted-foreground">
+                <p id="edit-reminder-type-hint" className="mb-3 text-xs text-muted-foreground">
                   One-time is for a single log; recurring follows your frequency.
                 </p>
                 <div
                   className="flex flex-col gap-3 sm:flex-row"
                   role="radiogroup"
-                  aria-labelledby="reminder-type-heading"
-                  aria-describedby="reminder-type-hint"
+                  aria-labelledby="edit-reminder-type-heading"
+                  aria-describedby="edit-reminder-type-hint"
                 >
                   {reminderTypeOptions.map((opt) => {
                     const selected = type === opt.value;
@@ -216,13 +293,13 @@ const NewGroupReminderScreen = () => {
               {type === ReminderType.recurring ? (
                 <div className="w-full">
                   <label
-                    htmlFor="reminder-frequency"
+                    htmlFor="edit-reminder-frequency"
                     className="mb-1.5 block text-sm font-medium text-foreground"
                   >
                     Frequency
                   </label>
                   <select
-                    id="reminder-frequency"
+                    id="edit-reminder-frequency"
                     name="frequencyPreset"
                     value={frequencyKey}
                     onChange={(e) => {
@@ -249,7 +326,7 @@ const NewGroupReminderScreen = () => {
                     <option value={frequencyCustomValue}>Custom</option>
                   </select>
                   <p
-                    id="reminder-frequency-hint"
+                    id="edit-reminder-frequency-hint"
                     className="mt-1.5 text-xs text-muted-foreground"
                   >
                     How often the reminder repeats.
@@ -257,7 +334,7 @@ const NewGroupReminderScreen = () => {
                   {frequencyKey === frequencyCustomValue ? (
                     <div className="mt-3">
                       <TextField
-                        id="reminder-frequency-custom"
+                        id="edit-reminder-frequency-custom"
                         label="Custom interval (hours)"
                         name="frequencyHours"
                         type="text"
@@ -274,14 +351,14 @@ const NewGroupReminderScreen = () => {
               ) : null}
               <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-surface/50 px-4 py-3">
                 <input
-                  id="reminder-push"
+                  id="edit-reminder-push"
                   name="pushNotificationsEnabled"
                   type="checkbox"
                   className="mt-0.5 h-4 w-4 shrink-0 rounded border border-border text-primary focus:ring-2 focus:ring-primary/40"
                   checked={pushNotificationsEnabled}
                   onChange={(ev) => setPushNotificationsEnabled(ev.target.checked)}
                 />
-                <label htmlFor="reminder-push" className="text-sm leading-snug text-foreground">
+                <label htmlFor="edit-reminder-push" className="text-sm leading-snug text-foreground">
                   <span className="font-medium">Push notifications</span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     Get reminded when it is time to log or check in.
@@ -294,7 +371,7 @@ const NewGroupReminderScreen = () => {
                 </p>
               ) : null}
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating…" : "Create reminder"}
+                {isSubmitting ? "Saving…" : "Save changes"}
               </Button>
             </form>
           </Card>
@@ -304,4 +381,4 @@ const NewGroupReminderScreen = () => {
   );
 };
 
-export default NewGroupReminderScreen;
+export default EditGroupReminderScreen;

@@ -1,7 +1,7 @@
 import { ENVIRONTMENT } from "../../config/environment.config";
-import { del, get, post, postWithoutBody } from "../lib/request";
+import { del, get, patch, post, postWithoutBody } from "../lib/request";
 import type { StandardApiResponse } from "../models";
-import type { CreateGroupReminderBody, Reminders } from "../types";
+import type { CreateGroupReminderBody, PatchGroupReminderBody, Reminders } from "../types";
 import { userApiRoute } from "./user.service";
 
 const groupsApiRoute = `${ENVIRONTMENT.URL_BACKEND}/api/groups`;
@@ -26,6 +26,21 @@ export function createGroupReminder(groupId: string, body: CreateGroupReminderBo
   return post(
     groupsApiRoute,
     `/${encodeURIComponent(groupId)}/reminder`,
+    body,
+    undefined,
+    true,
+  );
+}
+
+/** PATCH /api/groups/:group_id/reminder/:reminder_id */
+export function patchGroupReminder(
+  groupId: string,
+  reminderId: string,
+  body: PatchGroupReminderBody,
+) {
+  return patch(
+    groupsApiRoute,
+    `/${encodeURIComponent(groupId)}/reminder/${encodeURIComponent(reminderId)}`,
     body,
     undefined,
     true,

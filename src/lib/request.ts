@@ -113,6 +113,35 @@ export async function put(
   return data;
 }
 
+export async function patch(
+  route: string,
+  path: string,
+  body: object,
+  searchParams?: Record<string, string>,
+  withAuth = false,
+) {
+  const url =
+    searchParams == null
+      ? `${route}${path}`
+      : `${route}${path}?${new URLSearchParams(searchParams)}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      ...jsonHeaders,
+      ...(withAuth ? bearerHeaders() : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      messageFromBody(data) ??
+      (res.statusText || `Request failed (${res.status})`);
+    throw new HttpError(msg, res.status, data);
+  }
+  return data;
+}
+
 export async function get(
   route: string,
   path: string,
